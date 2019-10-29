@@ -1,0 +1,547 @@
+<!-- # HISTORICO DE VERSOES -->
+
+<!-- Imagem Opcional
+  cwinsertswipecard.bmp -->
+<!-- Exemplo de Chamada
+  <editfile filename="cw_emv_callback.dat" key="callback_enabled" value="true" />
+  <editfile filename="cw_emv_callback.dat" key="app_name" value="minhaapp.posxml" />
+  <wait miliseconds="100" />
+  <execute filename="cw_emv_readcard.posxml" /> 
+-->
+
+<!-- # GLOBAL VARIABLES  -->
+<stringvariable value="" variable="sDeviceModel" />
+<stringvariable value="" variable="sDeviceModelShort" />
+<stringvariable value="" variable="sCard" />
+<stringvariable value="" variable="sKey" />
+<stringvariable value="" variable="sRet" />
+<stringvariable value="" variable="sRetRead" />
+<integervariable value="0" variable="iIsBinValid" />
+<integervariable value="0" variable="iRet" />
+<integervariable value="100" variable="iBackLightValue" />
+<integervariable value="0" variable="iRetRead" />
+<integervariable value="0" variable="iRet" />
+<integervariable value="0" variable="iIsBigScreenModel" />
+<integervariable value="0" variable="iIsTouchScreenModel" />
+
+<!-- Models -->
+
+<stringvariable value="" variable="sColorModels" />
+<stringvariable value="" variable="sTouchScreenModels" />
+<stringvariable value="" variable="sNoPrintDevices" />
+<stringvariable value="" variable="sSpecialScreenModels" />
+<stringvariable value="" variable="sBigScreenModels" />
+<stringvariable value="" variable="sBatteryDevices" />
+<stringvariable value="" variable="sDeviceColorMode" />
+
+<!-- Display -->
+
+<integervariable value="0" variable="iIsPrint" />
+<stringvariable value="" variable="sMessageToAlign" />
+<stringvariable value="" variable="sMessage" />
+
+<readfile filename="config.dat" key="model" variabledestination="$(sDeviceModel)" />
+<editfile filename="config.dat" key="enablevlib" value="1"/>
+<string.substring string="$(sDeviceModel)" start="0" length="2" variablereturn="$(sDeviceModelShort)" />
+  
+<!-- # Load the model configuration -->
+
+<readfile filename="cw_model_config.dat" key="color"          variabledestination="$(sColorModels)" />
+<readfile filename="cw_model_config.dat" key="touch_screen"   variabledestination="$(sTouchScreenModels)" />
+<readfile filename="cw_model_config.dat" key="no_print"       variabledestination="$(sNoPrintDevices)" />
+<readfile filename="cw_model_config.dat" key="special_screen" variabledestination="$(sSpecialScreenModels)" />
+<readfile filename="cw_model_config.dat" key="big_screen"     variabledestination="$(sBigScreenModels)" />
+<readfile filename="cw_model_config.dat" key="battery"        variabledestination="$(sBatteryDevices)" />
+
+<!-- # Device Model -->
+
+<readfile filename="config.dat" key="model" variabledestination="$(sDeviceModel)" />
+
+<!-- # Device Touch Screen -->
+
+<string.find string="$(sTouchScreenModels)" substring="$(sDeviceModel)" start="0" variablereturn="$(iRet)" />
+
+<if variable="$(iRet)" operator="greaterthanorequalto" value="0">
+  <integervariable value="1" variable="iIsTouchScreenModel" />
+</if>
+
+<!-- # Device Big Screen -->
+
+<string.find string="$(sBigScreenModels)" substring="$(sDeviceModel)" start="0" variablereturn="$(iRet)" />
+
+<if variable="$(iRet)" operator="greaterthanorequalto" value="0">
+  <integervariable value="1" variable="iIsBigScreenModel" />
+</if>
+
+<!-- # Device Color Mode -->
+<string.find string="$(sColorModels)" substring="$(sDeviceModel)" start="0" variablereturn="$(iRet)" />
+
+<if variable="$(iRet)" operator="greaterthanorequalto" value="0">
+  <stringvariable value="color" variable="sDeviceColorMode" />
+<else />
+  <stringvariable value="mono" variable="sDeviceColorMode" />
+</if>
+
+<deletefile filename="card.dat" />
+
+<!-- EMV Open and Load Tables -->
+<callfunction name="fn_emv_load_tables"/>
+
+<callfunction name="fn_main" />
+<exit />
+
+<!-- # MAIN -->
+
+<!-- fn_main -->
+<function name="fn_main">
+  <integervariable value="-2" variable="iRetRead" />
+  <integervariable value="0" variable="iRet" />
+  <integervariable value="0" variable="iFileSize" />
+  <integervariable value="0" variable="iRetBitmap" />
+  
+	<while variable="$(iRetRead)" operator="equalto" value="-2" >
+    <filesystem.filesize filename="cwinsertswipecard.bmp" variablereturn="$(iFileSize)" />
+    
+    <if variable="$(iFileSize)" operator="greaterthan" value="0">
+      <!-- <displaybitmap filename="cwinsertswipecard.bmp" variablereturn="$(iRetBitmap)" /> -->
+      <displaybitmap filename="passa_cartao.bmp" variablereturn="$(iRetBitmap)" />
+    <else />
+  	  <string.find string="$(sSpecialScreenModels)" substring="$(sDeviceModel)" start="0" variablereturn="$(iRet)" />
+  	  
+  	  <cleandisplay />
+  	  
+  	  <if variable="$(iRet)" operator="lessthan" value="0">
+  	    <display line="3" column="0" message=" POR FAVOR, INSIRA " />
+  	    <display line="4" column="0" message=" OU PASSE O CARTAO.." />
+  	  <else />
+  	    <display line="8" column="0" message="       POR FAVOR, INSIRA   " />
+  	    <display line="9" column="0" message="       OU PASSE O CARTAO..." />
+  	  </if>
+    </if>
+
+		<!-- EMV Init -->
+		<callfunction name="fn_emv_init"/>
+
+		<system.readcard cardvariable="$(sCard)" keyvariable="$(sKey)" timeout="30000" variablereturn="$(iRetRead)"/>
+
+        <!-- Display output -->
+        <stringvariable value="" variable="$(sRetRead)" />
+        <!-- <inttostring variableinteger="$(iRetRead)" variablestring="$(sRetRead)" /> -->
+
+		<!-- Validate keys pressed and ignore it -->
+		<stringvariable value="KEY_CLEAR|KEY_2|KEY_3|KEY_4|KEY_5|KEY_6|KEY_7|KEY_8|KEY_9" variable="sIgnoreKeys" />
+		
+		<string.find start="0" string="$(sIgnoreKeys)" substring="$(sKey)" variablereturn="$(iRet)" />
+		
+		<if variable="$(iRet)" operator="greaterthanorequalto" value="0" >
+			<integervariable value="-2" variable="iRetRead" />
+			<stringvariable value="" variable="sKey" />
+			<stringvariable value="" variable="sCard" />
+
+		<else />
+		  <if variable="$(sKey)" operator="equalto" value="KEY_ENTER">
+		    <execute filename="cw_omni_digit.posxml" />
+		  <else />
+		    <if variable="$(sKey)" operator="equalto" value="-2">
+		    <displaybitmap filename="cancela_sacador.bmp" variablereturn="$(iRetBitmap)" />
+		      <!-- <displaybitmap filename="canceled.bmp" variablereturn="$(iRetBitmap)" /> -->
+		      <wait miliseconds="2000" />
+		      <deletefile filename="cw_emv_payment.dat" />
+          <deletefile filename="card.dat" />
+          <exit />
+		    </if>
+		  </if>
+		</if>
+	</while>
+
+	<callfunction name="fn_set_backlight_100" />
+
+	<!-- Private Label Check Read Card -->
+	<callfunction name="fn_private_check_read_card" />
+
+	<!-- EMV Check Read Card -->
+	<callfunction name="fn_emv_check_read_card" />
+	
+	<integervariable value="0" variable="iRet" />
+	
+  <string.find string="$(sSpecialScreenModels)" substring="$(sDeviceModel)" start="0" variablereturn="$(iRet)" />
+  
+  <cleandisplay />
+  
+  <if variable="$(iRet)" operator="lessthan" value="0">
+  	<display line="3" column="0" message=" OPERACAO CANCELADA " />
+  	<display line="6" column="0" message="   PRESSIONE ENTER  " />
+  <else />
+  	<display line="8"  column="0" message="      OPERACAO CANCELADA  " />
+  	<display line="12" column="0" message="       PRESSIONE ENTER    " />
+  </if>
+  
+  <waitkeytimeout seconds="5" />
+  
+  <deletefile filename="cw_emv_payment.dat" />
+  <deletefile filename="card.dat" />
+  <emv.settimeout seconds="30" variablereturn="$(iRet)" />
+  <emv.removecard variablereturn="$(iRet)" />
+  
+	<exit />
+</function>
+
+<!-- # UTIL -->
+
+<!-- fn_set_backlight_100 -->
+<function name="fn_set_backlight_100" >
+	<!-- Backlight: 100% -->
+	<integervariable value="100" variable="iBackLightValue" />
+	<system.backlight level="$(iBackLightValue)" variablereturn="$(iRet)" />
+</function>
+
+<!-- # EMV -->
+
+<!-- fn_emv_load_tables -->
+<function name="fn_emv_load_tables">
+	<integervariable value="0" variable="iRet" />
+	<stringvariable value="" variable="sRet" />
+	<stringvariable value="" variable="sTmp" />
+	
+	<!-- VeriFone (E265) -->
+	<if variable="$(sDeviceModelShort)" operator="equalto" value="E2" >
+		<emv.close variablereturn="$(iRet)"/>
+		<emv.open mkslot="01" pinpadtype="1" pinpadwk="00" showamount="1" variablereturn="$(iRet)"/>
+		
+		<if variable="$(iRet)" operator="equalto" value="0">
+			<emv.loadtables acquirer="4" variablereturn="$(iRet)"/>
+		</if>
+		
+		<if variable="$(sDeviceColorMode)" operator="equalto" value="color">
+		  <if variable="$(iIsBigScreenModel)" operator="equalto" value="1">
+		    <displaybitmap filename="vx680-menu.bmp" variablereturn="$(iRet)" />
+		  </if>
+		</if>
+	<else />
+		<if variable="$(sDeviceModelShort)" operator="equalto" value="VX" >
+			<emv.close variablereturn="$(iRet)"/>
+			<emv.open mkslot="01" pinpadtype="1" pinpadwk="00" showamount="1" variablereturn="$(iRet)"/>
+			
+			<if variable="$(iRet)" operator="equalto" value="0">
+				<emv.loadtables acquirer="4" variablereturn="$(iRet)"/>
+			</if>
+			
+			<if variable="$(sDeviceColorMode)" operator="equalto" value="color">
+  		  <if variable="$(iIsBigScreenModel)" operator="equalto" value="1">
+  		    <displaybitmap filename="vx680-menu.bmp" variablereturn="$(iRet)" />
+  		  </if>
+  		</if>
+		<else/>
+			<!-- Ingenico -->
+			<emv.open mkslot="01" pinpadtype="1" pinpadwk="00" showamount="1" variablereturn="$(iRet)"/>
+			<emv.close variablereturn="$(iRet)"/>
+			<emv.open mkslot="01" pinpadtype="1" pinpadwk="00" showamount="1" variablereturn="$(iRet)"/>
+			
+			<if variable="$(iRet)" operator="notequalto" value="0">
+				<if variable="$(iRet)" operator="notequalto" value="14">
+					<cleandisplay/>
+					<display column="0" line="2" message="   ERRO INICIANDO   "/>
+					<display column="0" line="3" message="     KERNEL EMV     "/>
+					<waitkeytimeout seconds="20"/>
+				</if>
+			</if>
+			
+			<emv.loadtables acquirer="4" variablereturn="$(iRet)"/>
+		</if>
+	</if>
+</function>
+
+<!-- fn_emv_init -->
+<function name="fn_emv_init" >
+	<stringvariable value="" variable="sDate1"/>
+	<stringvariable value="" variable="sDateTimeStamp"/>
+	<stringvariable value="" variable="sHour"/>
+	<stringvariable value="01" variable="sTimeStamp"/>
+	<integervariable value="0" variable="iRetInit"/>
+	
+	<emv.cleanstructures/>
+	<getdatetime format="yMd" variabledestination="$(sDate1)"/>
+	<getdatetime format="hms" variabledestination="$(sHour)"/>
+	<getdatetime format="dMyy" variabledestination="$(sDateTimeStamp)"/>
+	
+	<joinstring firstvalue="$(sDateTimeStamp)" secondvalue="$(sTimeStamp)" variabledestination="$(sDateTimeStamp)"/>
+	
+	<emv.adddata type="init" parameter="baDate"                value="$(sDate1)" variablereturn="$(iRetInit)"/>
+	<emv.adddata type="init" parameter="baTime"                value="$(sHour)" variablereturn="$(iRetInit)"/>
+	<emv.adddata type="init" parameter="baTimeStamp"           value="$(sDateTimeStamp)" variablereturn="$(iRetInit)"/>
+	<emv.adddata type="init" parameter="bAcquirerID"           value="4" variablereturn="$(iRetInit)"/>
+	<emv.adddata type="init" parameter="bReqApplication"       value="99" variablereturn="$(iRetInit)"/>
+	<emv.adddata type="init" parameter="bAcquirerLocationMode" value="1" variablereturn="$(iRetInit)"/>
+
+	<editfile filename="cw_emv_payment.dat" key="baDate" value="$(sDate1)" />
+	<editfile filename="cw_emv_payment.dat" key="baTime" value="$(sHour)" />
+	<editfile filename="cw_emv_payment.dat" key="baTimeStamp" value="$(sDateTimeStamp)" />
+	<editfile filename="cw_emv_payment.dat" key="bAcquirerID" value="4" />
+	<editfile filename="cw_emv_payment.dat" key="bReqApplication" value="99" />
+	<editfile filename="cw_emv_payment.dat" key="bAcquirerLocationMode" value="1" />
+</function>
+
+<!-- fn_emv_check_read_card -->
+<function name="fn_emv_check_read_card" >
+	<stringvariable value="" variable="sRetRead" />
+	<integervariable value="0" variable="iRet" />
+	<stringvariable value="" variable="sAppType" />
+    <stringvariable value="" variable="sMessage" />
+    <stringvariable value="" variable="sMessageToAlign" />
+    <integervariable value="0" variable="iIsPrint" />
+
+	<emv.getinfo type="init" parameter="bAppType"           value="$(sAppType)" />
+
+    <if variable="$(sAppType)" operator="equalto" value="01">
+        <cleandisplay />
+        <stringvariable value=" | | | |OPÇÃO INVÁLIDA!" variable="sMessage" />
+        <callfunction name="fn_show_message" />
+        <waitkeytimeout seconds="10" />
+        <callfunction name="fn_emv_removecard" />
+        <exit />
+    </if>
+	
+	<filesystem.filesize filename="cw_omni_emv.posxml"  variablereturn="$(iRet)"/>
+	<inttostring variableinteger="$(iRetRead)" variablestring="$(sRetRead)" />
+	
+	<if operator="greaterthanorequalto" value="0" variable="$(iRet)">
+		<if operator="equalto" value="KEY_CANCEL" variable="$(sKey)">
+			<editfile filename="cw_emv_payment.dat" key="paRetReadCard" value="$(sRetRead)" />
+			<editfile filename="cw_emv_payment.dat" key="paKey" value="$(sKey)" />
+
+			<if operator="notequalto" value="" variable="$(sCard)">
+				<editfile filename="cw_emv_payment.dat" key="paCard" value="$(sCard)" />
+			<else />
+				<editfile filename="cw_emv_payment.dat" key="paCard" value=" " />
+			</if>
+
+			<if operator="greaterthanorequalto" value="1" variable="$(iRetRead)" >
+				<execute filename="cw_omni_emv.posxml" />
+			<else />
+				<if operator="notequalto" value="0" variable="$(sCard)" >
+					<if operator="notequalto" value="" variable="$(sCard)" >
+						<if operator="notequalto" value=" " variable="$(sCard)" >
+							<execute filename="cw_omni_emv.posxml" />
+						</if>
+					</if>
+				</if>
+			</if>
+		</if>
+	</if>
+</function>
+
+<!-- # PRIVATE LABEL -->
+
+<!-- fn_validate_card_bins -->
+<function name="fn_validate_card_bins">
+	<integervariable value="0" variable="iRet" />
+	<integervariable value="0" variable="iElements" />
+	<integervariable value="0" variable="iIndex" />
+	<integervariable value="0" variable="iIndex" />
+	<integervariable value="0" variable="iBinEnd" />
+	<integervariable value="0" variable="iBinIni" />
+	<integervariable value="0" variable="iBin" />
+	<integervariable value="0" variable="iIsBinValid" />
+	<stringvariable value="" variable="sExecAppName" />
+	<stringvariable value="" variable="sBinsData" />
+	<stringvariable value="" variable="sBinsRanges" />
+	<stringvariable value="" variable="sBinsExceptions" />
+	<stringvariable value="" variable="sCardBin" />
+	<stringvariable value="" variable="sBinIni" />
+	<stringvariable value="" variable="sBinEnd" />
+	<stringvariable value="" variable="sBin" />
+	
+	<if variable="$(sCard)" operator="equalto" value="">
+		<cleandisplay />
+		<display line="2" column="0" message="  OPERACAO CANCELADA " />
+		<display line="4" column="0" message=" CARTAO NAO SUPORTADO" />
+		<integervariable value="0" variable="iIsBinValid" />
+		<waitkeytimeout seconds="5" />
+	<else />
+		<if variable="$(sCard)" operator="equalto" value=" ">
+		  <cleandisplay />
+		  	<display line="2" column="0" message="  OPERACAO CANCELADA " />
+		  <display line="4" column="0" message=" CARTAO NAO SUPORTADO" />
+		  <integervariable value="0" variable="iIsBinValid" />
+		  <waitkeytimeout seconds="5" />
+		</if>
+	</if>
+	
+	<!-- Get the card bin -->
+	<string.substring string="$(sCard)" start="0" length="4" variablereturn="$(sBin)" />
+	
+	<if variable="$(sBin)" operator="notequalto" value="">
+		<stringtoint variablestring="$(sBin)" variableinteger="$(iBin)" />
+	</if>
+	
+	<!-- Read the bins range into a file and compare the bins -->
+	<filesystem.filesize filename="card_bins.dat" variablereturn="$(iRet)" />
+	
+	<if variable="$(iRet)" operator="greaterthan" value="0">
+		<readfile filename="card_bins.dat" key="private_data_card_bins" variabledestination="$(sBinsData)" />
+		
+		<string.getvaluebykey string="$(sBinsData)" key="ranges"     variablereturn="$(sBinsRanges)" />
+		<string.getvaluebykey string="$(sBinsData)" key="exceptions" variablereturn="$(sBinsExceptions)" />
+		<string.getvaluebykey string="$(sBinsData)" key="exec_app" variablereturn="$(sExecAppName)" />
+		
+		<string.elements string="$(sBinsRanges)" delimiter="|" variablereturn="$(iElements)" />
+		
+		<!-- Debug
+		<print message="$(sBinsRanges)" />
+		<print message="$(sBin)" />
+		<print message="$(sCard)" />
+		<paperfeed /> -->
+		
+		<while variable="$(iIndex)" operator="lessthan" value="$(iElements)">
+		  <if variable="$(sBinsRanges)" operator="notequalto" value="">
+		    <string.elementat string="$(sBinsRanges)" element_index="$(iIndex)" delimiter="|" variablereturn="$(sBin)" />
+		    
+		    <string.elementat string="$(sBin)" element_index="0" delimiter="," variablereturn="$(sBinIni)" />
+		    <string.elementat string="$(sBin)" element_index="1" delimiter="," variablereturn="$(sBinEnd)" />
+		    
+		    <!-- Debug 
+		    <print message="$(sBinIni)" />
+		    <print message="$(sBinEnd)" /> -->
+		    
+		    <if variable="$(sBinIni)" operator="notequalto" value="">
+		      <stringtoint variablestring="$(sBinIni)" variableinteger="$(iBinIni)" />
+		    </if>
+		    
+		    <if variable="$(sBinEnd)" operator="notequalto" value="">
+		      <stringtoint variablestring="$(sBinEnd)" variableinteger="$(iBinEnd)" />
+		    </if>
+		    
+		    <!-- Card bin range has been found -->
+		    <if variable="$(iBin)" operator="greaterthanorequalto" value="$(iBinIni)">
+		      <if variable="$(iBin)" operator="lessthanorequalto" value="$(iBinEnd)">
+		        <integervariable value="1" variable="iIsBinValid" />
+		        <break />
+		      </if>
+		    </if>
+		  </if>
+		  
+		  <integeroperator operator="++" variablesource="$(iIndex)" />
+		</while>
+		
+		<!-- Check if the bins is ok or try find into the bins exceptions -->
+		<if variable="$(iIsBinValid)" operator="equalto" value="0">
+		  <if variable="$(sCardBin)" operator="notequalto" value="">
+		    <string.find string="$(sBinsExceptions)" substring="$(sCardBin)" start="0" variablereturn="$(iRet)" />
+		    
+		    <if variable="$(iRet)" operator="greaterthanorequalto" value="0">
+		      <integervariable value="1" variable="iIsBinValid" />
+		    </if>
+		  </if>
+		</if>
+	</if>
+	
+	<if variable="$(iIsBinValid)" operator="notequalto" value="1">
+		<integervariable value="0" variable="iIsBinValid" />
+	</if>
+</function>
+
+<!-- fn_private_check_read_card -->
+<function name="fn_private_check_read_card">
+	<stringvariable value=""  variable="sBin"/>
+	<stringvariable value=""  variable="sRet"/>
+	<integervariable value="0" variable="iRet" />
+
+	<if variable="$(sCard)" operator="notequalto" value="" >
+		<if variable="$(sCard)" operator="notequalto" value="D" >
+			<if variable="$(sCard)" operator="notequalto" value=" " >
+				<if variable="$(sCard)" operator="notequalto" value="0" >
+					<callfunction name="fn_validate_card_bins" />
+					
+					<if variable="$(iIsBinValid)" operator="equalto" value="1">
+						<filesystem.filesize filename="$(sExecAppName)" variablereturn="$(iRet)"/>
+						
+						<if operator="greaterthan" value="0" variable="$(iRet)">
+							<editfile filename="app_init.dat" key="initoption" value="setcard" />
+							<editfile filename="app_init.dat" key="cardnumber" value="$(sCard)" />
+
+							<if operator="notequalto" value="" variable="$(sExecAppName)" >
+								<execute filename="$(sExecAppName)" />
+							</if>
+						</if>
+					</if>
+				</if>
+			</if>
+		</if>
+	</if>
+</function>
+
+<!-- fn_align_center -->
+<function name="fn_align_center">
+  <integervariable value="21" variable="iDisplayColumns"/>
+  <integervariable value="0" variable="iLenMessage"/>
+  <integervariable value="1" variable="iCharCount"/>
+  <integervariable value="0" variable="iSpaceCount"/>
+
+  <if variable="$(iIsPrint)" operator="equalto" value="1">
+    <integervariable value="42" variable="iDisplayColumns" />
+  <else />
+    <integervariable value="30" variable="iDisplayColumns"/>
+  </if>
+
+  <string.trim string="$(sMessageToAlign)" variablereturn="$(sMessageToAlign)"/>
+  <string.length value="$(sMessageToAlign)" variablereturn="$(iLenMessage)"/>
+
+  <if variable="$(iLenMessage)" operator="lessthan" value="$(iDisplayColumns)">
+    <mathematicaloperation firstvalue="$(iDisplayColumns)" operator="-" secondvalue="$(iLenMessage)" variabledestination="$(iSpaceCount)"/>
+    <mathematicaloperation firstvalue="$(iSpaceCount)" operator="/" secondvalue="2" variabledestination="$(iSpaceCount)" />
+
+    <while variable="$(iCharCount)" operator="lessthanorequalto" value="$(iSpaceCount)">
+      <mathematicaloperation firstvalue="$(iCharCount)" operator="+" secondvalue="1" variabledestination="$(iCharCount)"/>
+      <joinstring firstvalue=" " secondvalue="$(sMessageToAlign)" variabledestination="$(sMessageToAlign)"/>
+    </while>
+  </if>
+
+  <!-- reset IsPrint flag -->
+  <integervariable value="0" variable="iIsPrint" />
+</function>
+
+    <!-- fn_show_message -->
+<function name="fn_show_message">
+    <stringvariable value="" variable="sMsg" />
+    <integervariable value="0" variable="iElements" />
+    <integervariable value="0" variable="iLine" />
+    <integervariable value="0" variable="iI" />
+
+    <if variable="$(sMessage)" operator="notequalto" value="">
+        <string.elements string="$(sMessage)" delimiter="|" variablereturn="$(iElements)" />
+
+        <while variable="$(iI)" operator="lessthan" value="$(iElements)">
+          <string.elementat string="$(sMessage)" element_index="$(iI)" delimiter="|" variablereturn="$(sMessageToAlign)" />
+          <callfunction name="fn_align_center" />
+          <display line="$(iLine)" column="0" message="$(sMessageToAlign)" />
+          <integeroperator operator="++" variablesource="$(iLine)" />
+          <integeroperator operator="++" variablesource="$(iI)" />
+        </while>
+    </if>
+</function>
+
+<!-- fn_emv_removecard -->
+<function name="fn_emv_removecard">
+  <integervariable value="0" variable="iRet" />
+  <stringvariable value="false" variable="sCardRemoved" />
+
+  <emv.settimeout seconds="30" variablereturn="$(iRet)" />
+  <emv.removecard variablereturn="$(iRet)" />
+
+  <stringvariable value="true" variable="sCardRemoved" />
+</function>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  

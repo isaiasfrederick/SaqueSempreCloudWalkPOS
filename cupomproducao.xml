@@ -1,0 +1,126 @@
+<stringvariable value="0" variable="sTransactionStatus" />
+<readfile filename="cw_emv_callback.dat" key="status" variabledestination="$(sTransactionStatus)" />
+<!--
+    Data:            Hora:
+    Termo de Saque n.º:
+    Controle/identificação:
+    Cliente:
+    CPF:
+    Dados da conta a debitar:
+    Data do contrato:
+    Valor sacado:
+    Valor debitado:
+    Data de vencimento:
+    Tarifa de serviços:
+-->
+<integervariable value="0" variable="iReturn" />
+<stringvariable value="0" variable="sTransactionStatus" />
+<stringvariable value="0" variable="sBrand" />
+<stringvariable value="0" variable="sAuthCode" />
+<stringvariable value="0" variable="sDate" />
+<stringvariable value="0" variable="sCardHolder" />
+<stringvariable value="0" variable="sCard" />
+<stringvariable value="0" variable="sCod" />
+<!-- breakline -->
+<stringvariable value="" variable="sTransactionStatus" />
+<stringvariable value="" variable="sDateTransaction" />
+<stringvariable value="" variable="sAmount" />
+<stringvariable value="" variable="sPaymentCode" />
+<stringvariable value="" variable="sLastCardDigit" />
+<stringvariable value="" variable="sExpDate" />
+<stringvariable value="" variable="sBrand" />
+<stringvariable value="" variable="sInstallments" />
+<stringvariable value="" variable="sCardHolder" />
+<stringvariable value="" variable="sDateTransaction" />
+<stringvariable value="" variable="sPaymentType" />
+<integervariable value="0" variable="iRet" />
+<!-- Variaveis extras inseridas pelo Isaias -->
+<stringvariable value="" variable="sTipoTransacao" />
+<stringvariable value="" variable="sValorTransacaoSS" />
+<stringvariable value="" variable="sValorDebito" />
+<stringvariable value="" variable="sValorTaxa" />
+<stringvariable value="cupom.dat" variable="sDirCupomConfig" />
+<readfile filename="cw_emv_callback.dat" key="brand"
+variabledestination="$(sBrand)" />
+<readfile filename="cw_emv_callback.dat" key="auth_code"
+variabledestination="$(sAuthCode)" />
+<readfile filename="cw_emv_callback.dat" key="date"
+variabledestination="$(sDate)" />
+<readfile filename="cw_emv_callback.dat" key="exp_date"
+variabledestination="$(sExpDate)" />
+<readfile filename="cw_emv_callback.dat" key="card_holder"
+variabledestination="$(sCardHolder)" />
+<readfile filename="cw_emv_callback.dat" key="pan_mask"
+variabledestination="$(sCard)" />
+<readfile filename="cw_emv_callback.dat" key="auth_code"
+variabledestination="$(sCod)" />
+<readfile filename="cw_emv_callback.dat" key="status" variabledestination="$(sTransactionStatus)" />
+
+<!-- <joinstring firstvalue="" secondvalue="APPROVED" variabledestination="$(sTransactionStatus)" /> -->
+
+<if variable="$(sTransactionStatus)" operator="equalto" value="APPROVED">
+    <!-- Lendo montante, taxa e tipo de transacao -->
+
+    <readfile filename="cupom.dat" key="valor_transacao" variabledestination="$(sValorTransacaoSS)" />
+    <readfile filename="cupom.dat" key="valor_debito" variabledestination="$(sValorDebito)" />
+    <readfile filename="cupom.dat" key="valor_taxa" variabledestination="$(sValorTaxa)" />
+    <readfile filename="cupom.dat" key="tipo_transacao" variabledestination="$(sTipoTransacao)" />
+    
+    <display line="0" column="0" message="$(sValorTaxa)" />
+    
+    <joinstring firstvalue="DATA/HORA: " secondvalue="$(sDate)" variabledestination="$(sDate)" />
+    <joinstring firstvalue="             " secondvalue="$(sBrand)" variabledestination="$(sBrand)" />
+    <joinstring firstvalue="$(sBrand)" secondvalue=" - " variabledestination="$(sBrand)" />
+    <joinstring firstvalue="$(sBrand)" secondvalue="$(sTipoTransacao)" variabledestination="$(sTipoTransacao)" />
+    <joinstring firstvalue="            " secondvalue="$(sCard)" variabledestination="$(sCard)" />
+    
+    <joinstring firstvalue="Valor do saque: " secondvalue="$(sValorTransacaoSS)" variabledestination="$(sValorTransacaoSS)" />
+    <joinstring firstvalue="Taxa de conveniecia: " secondvalue="$(sValorTaxa)" variabledestination="$(sValorTaxa)" />
+    <joinstring firstvalue="Valor total: " secondvalue="$(sValorDebito)" variabledestination="$(sValorDebito)" />
+
+    <joinstring firstvalue="ID: " secondvalue="$(sCod)" variabledestination="$(sCod)" />
+
+    <!-- HEADER DO CUPOM -->    
+    <printbitmap filename="logo_mono.bmp" variablereturn="$(iReturn)" />
+
+    <print message="               Via Cliente" />
+    <print message="$(sTipoTransacao)" />
+    <print message="$(sCard)" />
+    <print message="-----------------------------------------" />
+    <!-- FIM DO HEADER DO CUPOM -->
+
+    <print message="$(sCod)" />
+    <print message="$(sDate)" />
+    
+    <print message="-----------------------------------------" />
+    
+    <print message="$(sCardHolder)" />
+    <print message="$(sValorTransacaoSS)" />
+    <print message="$(sValorTaxa)" />
+    <print message="$(sValorDebito)" />
+    <print message=" " />
+    <print message="   TRANSACAO AUTORIZADA - VALOR TOTAL " />
+    <print message="    DEBITADO DA CONTA MEDIANTE SENHA" />
+    <print message="-----------------------------------------" />
+    <paperfeed />
+    
+<else />
+
+    <display line="2" column="4" message="A IMPRESSÃO FOI DISPARADA" />
+    <display line="3" column="4" message="SEM TRANSAÇÃO REALIZADA!" />
+    <display line="6" column="4" message="PRESSIONE <ENTER>" />
+    <waitkeytimeout seconds="4" />
+    
+</if>
+
+<deletefile filename="cupom.dat" />
+<deletefile filename="cw_metadata.dat" />
+<editfile filename="cw_emv_callback.dat" key="amount" value=" " />
+<editfile filename="cw_emv_callback.dat" key="status" value=" " />
+<editfile filename="cw_emv_callback.dat" key="auth_code" value=" " />
+<editfile filename="cw_emv_callback.dat" key="payment_type" value=" " />
+<editfile filename="cw_emv_callback.dat" key="date" value=" " />
+<editfile filename="cw_emv_callback.dat" key="paAmount" value=" " />
+<editfile filename="cw_emv_callback.dat" key="paValue" value=" " />
+<wait miliseconds="200" />
+  
